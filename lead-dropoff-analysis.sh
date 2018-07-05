@@ -1,74 +1,145 @@
-#https://stg3.bankbazaar.com/credit-card-smart-landing.html?variant=slide&variantOptions=mobileRequired&WT.mc_id=MSG_OB_CC_f3i_LOC&smsCampaign=true&_loc=true&forceRefactoring=true
+while getopts ":d:s:o:" opt; do
+    case $opt in
+        s) src_dir="$OPTARG"
+        ;;
+        d) for_date="$OPTARG"
+        ;;
+        o) out_dir="$OPTARG"
+        ;;
+    esac
+done
 
-declare -a for_date="2018-06-28";
-declare -a root_dir=/gluster-logs/mp/B062APP*/DAS/tomcat/logs;
-declare -a out_dir="/home/BANKBAZAAR/venkateshj/out-$for_date";
+declare -a in_dir="${out_dir}/${for_date}/in"
+declare -a out_dir="${out_dir}/${for_date}/out"
+declare -a files_to_be_parsed=("LoanDukaan.log" "localhost_access.log" "clickstream.log")
 declare -a experiment_id="ex338";
 declare -a treatments=("t1" "t2" "t3");
 
 function initialize() {
+    if [ ! -d "$in_dir" ]; then
+        mkdir -p "$in_dir"
+        for cntr_dir in $src_dir/B*; do
+            container_name=$(basename ${cntr_dir})
+            for fn in ${files_to_be_parsed[@]}; do
+                cp ${src_dir}/${container_name}/DAS/tomcat/logs/${fn}.${for_date}.gz ${in_dir}/${fn}.${for_date}.${container_name}.gz
+                gunzip ${in_dir}/${fn}.${for_date}.${container_name}.gz
+            done
+        done
+    fi
+
     if [ ! -d "$out_dir" ]; then
         mkdir -p "$out_dir"
     fi
 }
 
-function filter_localhost_access_to_cc_sl_access_only() {
-    echo "Searching for the SL access patterns in localhost_access.log files..."
-    zgrep "GET /credit-card.*smsCampaign" $root_dir/localhost_access.log."$for_date".gz \
-        > "$out_dir"/localhost_access_sl_alone.txt
-}
+function parse_session_ids_which_got_CC_SL() {
+    echo "Searching for the SL SMS access patterns in clickstream.log files..."
+    grep "credit-card-smart-landing.*smsCampaign=true" $in_dir/clickstream.log.* \
+        | awk '{
+            split($0, tokens, ""); 
+            ip_address = tokens[2];
+            session_id = tokens[4];
+            user_agent = tokens[9];
+            user_agent_family = "Unknown";
+            if (match(user_agent, /Android.*Version\/[.0-9]*.*Mobile Safari\/[.0-9]*/)) {
+                user_agent_family = "Android Webview";
+            } else if (match(user_agent, /Android.*Chrome\/[.0-9]* Mobile/)) {
+                user_agent_family = "Chrome (Android Mobile)";;
+            } else if (match(user_agent, /Android.*Chrome\/[.0-9]*/) && !(user_agent ~ "Mobile") ) {
+                user_agent_family = "Chrome (Android Tablet)";;
+            } else if (match(user_agent, /Windows NT.*Chrome\/[.0-9]*/)) {
+                user_agent_family = "Chrome (Windows Desktop)";;
+            } else if (match(user_agent, /Macintosh; Intel Mac OS X .* AppleWebKit\/[.0-9]* .* Chrome\/[.0-9]* Safari\/[.0-9]*/)) {
+                user_agent_family = "Chrome (Mac)";;
+            } else if (match(user_agent, /Linux x86_64.*Chrome\/[.0-9]*/)) {
+                user_agent_family = "Chrome (Linux)";;
+            } else if (match(user_agent, /\(iPhone; CPU iPhone OS .*\) AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Mobile\/[A-Z0-9a-z]* Safari\/[.0-9]*/)) {    
+                user_agent_family = "Safari (iPhone)"
+            } else if (match(user_agent, /\(Macintosh.*\) AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Safari\/[.0-9]*/)) {    
+                user_agent_family = "Safari (Mac)"
+            } else if (match(user_agent, /Mozilla\/5.0 \(X11; Ubuntu; Linux i686; rv:24.0\) Gecko\/20100101 Firefox\/24.0/)) {
+                user_agent_family = "Firefox (Blacklisted)";
+            } else if (match(user_agent, /\(Android [.0-9]*; Mobile; rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]*/)) {
+                user_agent_family = "Firefox (Android Mobile)";
+            } else if (match(user_agent, /\(Mobile; .*Android; rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]* KAIOS\/[.0-9]*/)) {
+                user_agent_family = "Firefox (KAIOS)";
+            } else if (match(user_agent, /\(Windows NT [.0-9]*; .*rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]*/)) {
+                user_agent_family = "Firefox (Windows Desktop)";
+            } else if (match(user_agent, /Android.*AppleWebKit\/[.0-9]* .* Mobile Safari\/[.0-9]*/) || match(user_agent, /Android.*AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Safari\/[.0-9]*/)) {
+                user_agent_family = "Android Browser";
+            } else if (match(user_agent, /^Opera.*/)) {
+                user_agent_family = "Opera";
+            } else if (match(user_agent, /MSIE .* Trident/)) {
+                user_agent_family = "Internet Explorer";
+            } else if (match(user_agent, /UCBrowser\/[.0-9]* U3\/[.0-9]* Mobile Safari\/[.0-9]*/) || match(user_agent, /^UCWEB\/2.0.*UCBrowser\/[.0-9]*/)) {
+                user_agent_family = "UCBrowser";
+            } else if (match(user_agent, /SamsungBrowser\/[.0-9]* Mobile Safari\/[.0-9]*/)) {
+                user_agent_family = "SamsungBrowser";
+            } else if (match(user_agent, /OppoBrowser/)) {
+                user_agent_family = "OppoBrowser";
+            } else if (match(user_agent, /^okhttp\/[.0-9]*$/)) {
+                user_agent_family = "BB-App";
+            } else if (match(user_agent, /^Dalvik.*/)) {
+                user_agent_family = "Dalvik";
+            } else if (match(user_agent, /^Apache-HttpClient\/UNAVAILABLE.*/)) {
+                user_agent_family = "ApacheHTTPClient";
+            } else if (match(user_agent, /^Mozilla\/5.0 \(BB10; Touch\)/) || match(user_agent, /^Mozilla\/5.0 \(BB10; Kbd\)/)) {
+                user_agent_family = "BlackBerry";
+            } else if (match(user_agent, /^facebookexternalhit\/1.1/)) {
+                user_agent_family = "Facebook Crawler";
+            } else if (match(user_agent, /SimpleScraper/)) {
+                user_agent_family = "SimpleScraper";
+            }
+            print ip_address "\t" session_id "\t" user_agent "\t" user_agent_family
+        }' \
+        > $out_dir/tmp_clickstream_sl_alone.txt
 
-function filter_clickstream_to_cc_sl_access_only() {
-    echo "Summary of User Agents"
-    zgrep "credit-card-smart-landing.*smsCampaign=true" $root_dir/clickstream.log."$for_date".gz \
-        | awk '{split($0, tokens, ""); print tokens[2] "\t" tokens[4] "\t" tokens[9]}' \
-        > $out_dir/clickstream_sl_alone.txt
-}
-
-function parse_session_id_out_of_localhost_access() {
     echo "Computing the SessionIDs which opened CC SL SMSCampaign..."
-    grep "GET /credit-card-smart-landing.*smsCampaign.*" "$out_dir"/localhost_access_sl_alone.txt  | awk '{print $11}' > "$out_dir"/session_ids.txt
+    awk '{print $2}' $out_dir/tmp_clickstream_sl_alone.txt | sort | uniq > "$out_dir"/session_ids_including_blacklisted.txt
+    grep -v "Firefox (Blacklisted)" $out_dir/tmp_clickstream_sl_alone.txt | awk '{print $2}' | sort | uniq > "$out_dir"/session_ids.txt
 }
 
-function categorize_sessions() {
-    echo "Categorizing the sessions as various Treatments..."
-    rm "$out_dir"/localhost_access-*.txt "$out_dir"/session_ids-part-*.txt
+function categorize_sessions_based_on_treatments() {
+    echo "Categorizing the sessions/localhost_acccess as various Treatments..."
+    rm "$out_dir"/localhost_access-*.txt "$out_dir"/session_ids-t*.txt
 
     cd $out_dir
-    split -l 3000 -d --additional-suffix .txt session_ids.txt session_ids-part-
-    cd ..
+    split -l 3000 -d --additional-suffix .txt session_ids.txt tmp_session_ids-part-
+    cd -
 
     for treatment in "${treatments[@]}"; do
         touch $out_dir/session_ids-"$treatment".txt
     done
 
-    for part in "$out_dir"/session_ids-part-*.txt; do
+    for part in "$out_dir"/tmp_session_ids-part-*.txt; do
         echo "    Processing " $part
-        zgrep -f $part $root_dir/LoanDukaan.log."$for_date".gz \
+        ./agrep -f $part $in_dir/LoanDukaan.log.* \
             | grep "The CAMPAIGN_KEY session attribute modified to .*${experiment_id}t*" \
             | sed -e "s/The CAMPAIGN_KEY session attribute modified to //g" \
             | awk '{print $3 " " $8}' \
             | sort | uniq -c | awk '{print $2 "\t" $3 "\t" $1}' \
-            > "$out_dir"/session_ids_categorization.txt
+            > "$out_dir"/tmp_session_ids_categorization.txt
 
-        awk -v experiment_id="$experiment_id" -v treatments="${treatments[*]}" -v out_dir="$out_dir" -v root_dir="$root_dir" -v for_date="$for_date" -F\| '{
+        awk -v experiment_id="$experiment_id" -v treatments="${treatments[*]}" -v out_dir="$out_dir" -v in_dir="$in_dir" -F\| '{
             split(treatments, treatments_array, " ")
             for (i in treatments_array) {
                 treatment=treatments_array[i];
                 pattern=experiment_id""treatment; 
                 if ($1 ~ pattern) { 
                     split($1, tokens, "\t"); 
-                    print tokens[1] > out_dir"/session_ids-"treatment".txt";
-                    # localhost_access_grep_cmd = "zgrep " tokens[1] " " root_dir"/localhost_access.log."for_date " >> " out_dir"/localhost_access-" treatment ".txt";
-                    # system(localhost_access_grep_cmd);
+                    print tokens[1] >> out_dir"/session_ids-"treatment".txt";
+                    localhost_access_grep_cmd = "grep " tokens[1] " " in_dir"/localhost_access.log.* >> " out_dir"/localhost_access-" treatment ".txt";
+                    system(localhost_access_grep_cmd);
                 }
             }
-        }' "$out_dir"/session_ids_categorization.txt
+        }' "$out_dir"/tmp_session_ids_categorization.txt
     done
 
     for treatment in "${treatments[@]}"; do
         sort "$out_dir"/session_ids-"$treatment".txt -o "$out_dir"/session_ids-"$treatment".txt
     done
+
+    rm "$out_dir"/tmp_session_ids-part-*.txt "$out_dir"/tmp_session_ids_categorization.txt
 }
 
 function compute_session_activity() {
@@ -125,67 +196,7 @@ function print_summary() {
 
 initialize
 
-filter_localhost_access_to_cc_sl_access_only
-filter_clickstream_to_cc_sl_access_only
-parse_session_id_out_of_localhost_access
-categorize_sessions
-# compute_session_activity
-print_summary
-
-# awk '{
-#     split($0, tokens, "\t");
-#     user_agent = tokens[3];
-#     user_agent_family = "Unknown";
-#     if (match(user_agent, /Android.*Version\/[.0-9]*.*Mobile Safari\/[.0-9]*/)) {
-#         user_agent_family = "Android Webview";
-#     } else if (match(user_agent, /Android.*Chrome\/[.0-9]* Mobile/)) {
-#         user_agent_family = "Chrome (Android Mobile)";;
-#     } else if (match(user_agent, /Android.*Chrome\/[.0-9]*/) && !(user_agent ~ "Mobile") ) {
-#         user_agent_family = "Chrome (Android Tablet)";;
-#     } else if (match(user_agent, /Windows NT.*Chrome\/[.0-9]*/)) {
-#         user_agent_family = "Chrome (Windows Desktop)";;
-#     } else if (match(user_agent, /Macintosh; Intel Mac OS X .* AppleWebKit\/[.0-9]* .* Chrome\/[.0-9]* Safari\/[.0-9]*/)) {
-#         user_agent_family = "Chrome (Mac)";;
-#     } else if (match(user_agent, /Linux x86_64.*Chrome\/[.0-9]*/)) {
-#         user_agent_family = "Chrome (Linux)";;
-#     } else if (match(user_agent, /\(iPhone; CPU iPhone OS .*\) AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Mobile\/[A-Z0-9a-z]* Safari\/[.0-9]*/)) {    
-#         user_agent_family = "Safari (iPhone)"
-#     } else if (match(user_agent, /\(Macintosh.*\) AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Safari\/[.0-9]*/)) {    
-#         user_agent_family = "Safari (Mac)"
-#     } else if (match(user_agent, /Mozilla\/5.0 \(X11; Ubuntu; Linux i686; rv:24.0\) Gecko\/20100101 Firefox\/24.0/)) {
-#         user_agent_family = "Firefox (Blacklisted)";
-#     } else if (match(user_agent, /\(Android [.0-9]*; Mobile; rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]*/)) {
-#         user_agent_family = "Firefox (Android Mobile)";
-#     } else if (match(user_agent, /\(Mobile; .*Android; rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]* KAIOS\/[.0-9]*/)) {
-#         user_agent_family = "Firefox (KAIOS)";
-#     } else if (match(user_agent, /\(Windows NT [.0-9]*; .*rv:[.0-9a-z]*\) Gecko\/[.0-9]* Firefox\/[.0-9]*/)) {
-#         user_agent_family = "Firefox (Windows Desktop)";
-#     } else if (match(user_agent, /Android.*AppleWebKit\/[.0-9]* .* Mobile Safari\/[.0-9]*/) || match(user_agent, /Android.*AppleWebKit\/[.0-9]* .* Version\/[.0-9]* Safari\/[.0-9]*/)) {
-#         user_agent_family = "Android Browser";
-#     } else if (match(user_agent, /^Opera.*/)) {
-#         user_agent_family = "Opera";
-#     } else if (match(user_agent, /MSIE .* Trident/)) {
-#         user_agent_family = "Internet Explorer";
-#     } else if (match(user_agent, /UCBrowser\/[.0-9]* U3\/[.0-9]* Mobile Safari\/[.0-9]*/) || match(user_agent, /^UCWEB\/2.0.*UCBrowser\/[.0-9]*/)) {
-#         user_agent_family = "UCBrowser";
-#     } else if (match(user_agent, /SamsungBrowser\/[.0-9]* Mobile Safari\/[.0-9]*/)) {
-#         user_agent_family = "SamsungBrowser";
-#     } else if (match(user_agent, /OppoBrowser/)) {
-#         user_agent_family = "OppoBrowser";
-#     } else if (match(user_agent, /^okhttp\/[.0-9]*$/)) {
-#         user_agent_family = "BB-App";
-#     } else if (match(user_agent, /^Dalvik.*/)) {
-#         user_agent_family = "Dalvik";
-#     } else if (match(user_agent, /^Apache-HttpClient\/UNAVAILABLE.*/)) {
-#         user_agent_family = "ApacheHTTPClient";
-#     } else if (match(user_agent, /^Mozilla\/5.0 \(BB10; Touch\)/) || match(user_agent, /^Mozilla\/5.0 \(BB10; Kbd\)/)) {
-#         user_agent_family = "BlackBerry";
-#     } else if (match(user_agent, /^facebookexternalhit\/1.1/)) {
-#         user_agent_family = "Facebook Crawler";
-#     } else if (match(user_agent, /SimpleScraper/)) {
-#         user_agent_family = "SimpleScraper";
-#     } else {
-#         print $0 "\t" user_agent_family
-#     }
-# }' clickstream_sl_alone.txt 
-
+# parse_session_ids_which_got_CC_SL
+categorize_sessions_based_on_treatments
+compute_session_activity
+#print_summary
