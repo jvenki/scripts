@@ -17,8 +17,8 @@ declare experiment_id="ex338";
 declare -a files_to_be_parsed=("LoanDukaan.log" "localhost_access.log" "clickstream.log")
 declare -a treatments=("t1" "t2" "t3");
 
+declare blacklisted_ua="Mozilla\/5.0 \(X11; Ubuntu; Linux i686; rv:24.0\) Gecko\/20100101 Firefox\/24.0|okhttp\/[.0-9]*"
 declare ignore_url_patterns='GET /personal-loan|POST /personal-loan|GET /car-loan|POST /car-loan|GET /used-car-loan|POST /used-car-loan|GET /home-loan|POST /home-loan|GET /debit-card|POST /debit-card|GET /savings-account|POST /savings-account|POST /saveLead.html|GET /credit-score|GET /.*credit-report|GET /no-credit-report.html|GET /creditReportFromToken.html|POST /credit_tracker|GET /ct-.*|POST /ct-.*|POST /.*credit-report.*|GET /credit-report-status.html|GET /websocket/creditTracker|GET / HTTP/1.1|GET /struts/domTT.js|GET /saveGeoLocation.html|GET /myaccount.html|GET /verifyWorkEmail.html|GET /gzip_|POST /sendCode.html|POST /verifyCode.html|GET /.*getHeaderAjax.html|GET /getAppsFlyerLinkParams.html|GET .*/queried-options.html|GET .*/autoComplete.html|POST .*/recommend.html|GET /recommended-options.html|GET /myaccount_ajax.html|POST /ajax-login-status.html|GET /getNativeLoginWidget.html|POST /signin_iframe.html|GET /privacy-policy.html|POST /signup_iframe.html|POST /short_signup_iframe_json.html|GET /getLatestMobileNumber.html|POST /forgotpwd_iframe.html|GET /recent-searches.html|GET /help-centre.html|POST /credit-card/create_app_event_for_geolocator.html|POST /credit-card/sendCode.html|GET /credit-card/mobilePixel.html|POST /credit-card/verifyCode.html|GET /checkMatch.html|POST /credit-card/sendPANNotification.html|GET /credit-card/congratulations.html|GET /setEventDetails.html|GET /signin_social.html|GET /.*/preLoadImages.html|GET /credit-card/get-dynamic-offers.html|GET /credit-card/subscribeToNewsLetterMC.html|GET /credit-card/verifyOwnershipForm.html|GET /credit-card/.*-credit-card.html|GET /credit-card/load-elig-slides.html|POST /credit-card/offer-details-compare.html|POST /credit-card/document_types.html|POST /credit-card/clear_and_load_next_form.html|POST /credit-card/load_next_form_app.html|POST /credit-card/file_upload.html|GET /credit-card/credit-card/fetchShortlistedOffers.html|POST /credit-card/getCityState.html|GET /credit-card/application_view.html|POST /credit-card/verifyOwnership.html|GET /credit-card/application_scrape.html|POST /credit-card/remove_file.html|POST /credit-card/triggerAutoSubmit.html|POST /credit-card/checkApprovalStatus.html|POST /credit-card/application_dpCheck.html|POST /credit-card/load-prefill-data.html|POST /credit-card/ajax-offer-details-mobile.html'
-
 declare replace_url_patterns='
 s/"GET \/credit-card.html.*"/LP/g; 
 s/"GET \/credit-card-smart-landing.html.*"/SL_LANDING/g; 
@@ -84,7 +84,7 @@ declare user_agent_family_awk_fn='function compute_ua_family(user_agent) {
     } else if (match(user_agent, /OppoBrowser/)) {
         return "OppoBrowser";
     } else if (match(user_agent, /^okhttp\/[.0-9]*$/)) {
-        return "BB-App";
+        return "OkHttp";
     } else if (match(user_agent, /^Dalvik.*/)) {
         return "Dalvik";
     } else if (match(user_agent, /^Apache-HttpClient\/UNAVAILABLE.*/)) {
@@ -99,35 +99,42 @@ declare user_agent_family_awk_fn='function compute_ua_family(user_agent) {
 }
 '
 
-center_print() {
-    termwidth=100; #"$(tput cols)"
-    padding="$(printf '%0.1s' \#{1..500})"
-    printf '%*.*s %s %*.*s\n' 0 "$(((termwidth-2-${#1})/2))" "$padding" "$1" 0 "$(((termwidth-1-${#1})/2))" "$padding"
+function center_print() {
+    padding="$(head -c $((($2-${#1}-2)/2)) < /dev/zero | tr '\0' ' ')"
+    printf '#%s%s%s#\n' "$padding" "$1" "$padding" 
+}
+
+function print_title() {
+    local title=$1
+    local color_none='\033[0m'
+    local color_cyan='\033[1;36m';
+    printf "\n${color_cyan}${title}${color_none}\n";
+    printf "${color_cyan}%s${color_none}\n" $(head -c $((${#title})) < /dev/zero | tr '\0' '-');
 }
 
 function print_progress() {
-    completed_ops_count="$1"
-    total_ops_count="$2"
-    msg="$3"
-    skipped=$4
+    local completed_ops_count="$1"
+    local total_ops_count="$2"
+    local msg="$3"
+    local skipped=$4
 
     if [ -e $skipped ]; then
         skipped=false
     fi
 
-    color_none='\033[0m'
-    color_cyan='\033[1;36m';
-    color_yellow='\033[1;33m'
-    color_green='\033[1;32m'
+    local color_none='\033[0m'
+    local color_cyan='\033[1;36m';
+    local color_yellow='\033[1;33m'
+    local color_green='\033[1;32m'
 
     if [ $skipped == true ]; then
-        printf "%-65s: ${color_cyan}SKIPPED${color_none}\n" "$msg";
+        printf "%-50s: ${color_cyan}SKIPPED${color_none}\n" "$msg";
     else
         perc_completed=$((completed_ops_count*100/total_ops_count))
         if [ $perc_completed == 100 ]; then
-            printf "%-65s: Completed: ${color_green}% -51s(%s%%)${color_none}\r" "$msg" $(head -c $((perc_completed/2)) < /dev/zero | tr '\0' '#') $perc_completed;
+            printf "%-50s: Completed: ${color_green}% -51s(%s%%)${color_none}\r" "$msg" $(head -c $((perc_completed/2)) < /dev/zero | tr '\0' '#') $perc_completed;
         else
-            printf "%-65s: Completed: ${color_yellow}% -51s(%s%%)${color_none}\r" "$msg" $(head -c $((perc_completed/2)) < /dev/zero | tr '\0' '#') $perc_completed;
+            printf "%-50s: Completed: ${color_yellow}% -51s(%s%%)${color_none}\r" "$msg" $(head -c $((perc_completed/2)) < /dev/zero | tr '\0' '#') $perc_completed;
         fi
     fi
 }
@@ -172,6 +179,7 @@ function initialize() {
     if [ ! -d "$out_dir" ]; then
         print_progress 1 1 "$op_name"
         mkdir -p "$out_dir"
+        printf "\n"
     else
         print_progress 1 1 "$op_name" true
     fi
@@ -179,7 +187,7 @@ function initialize() {
 
 function parse_session_ids_which_got_CC_SL() {
     local campaign_type=$1
-    local op_name="Computing SessionIDs which opened CC-SL '$campaign_type' from ClickStream";
+    local op_name="Computing SessionIDs which opened CC-SL '$campaign_type'";
     if [ -f $out_dir/"$campaign_type"_session_id_to_ua.txt ]; then
         print_progress 1 1 "$op_name" true 
         return
@@ -187,6 +195,7 @@ function parse_session_ids_which_got_CC_SL() {
 
     echo "$op_name"
     grep "credit-card-smart-landing.*${campaign_type}Campaign=true" $in_dir/clickstream.log.* \
+        | grep -vE "$blacklisted_ua" \
         | awk -F : "$user_agent_family_awk_fn"'{
             split($0, tokens, ""); 
             ip_address = tokens[2];
@@ -197,8 +206,7 @@ function parse_session_ids_which_got_CC_SL() {
         }' \
         > $out_dir/tmp_clickstream_sl_alone.txt
 
-    sort $out_dir/tmp_clickstream_sl_alone.txt | uniq > "$out_dir"/"$campaign_type"_session_id_to_ua_including_blacklisted.txt
-    grep -v "FirefoxBlacklisted" $out_dir/"$campaign_type"_session_id_to_ua_including_blacklisted.txt > "$out_dir"/"$campaign_type"_session_id_to_ua.txt
+    sort $out_dir/tmp_clickstream_sl_alone.txt | uniq > "$out_dir"/"$campaign_type"_session_id_to_ua.txt
     rm $out_dir/tmp_clickstream_sl_alone.txt
 }
 
@@ -336,43 +344,43 @@ function analyze_requests_wo_ajaxcontent() {
 function print_summary() {
     local campaign_type=$1
     echo "Number of Unique Sessions = " `cat ${out_dir}/"$campaign_type"_session_ids-t1.txt ${out_dir}/"$campaign_type"_session_ids-t2.txt ${out_dir}/"$campaign_type"_session_ids-t3.txt | wc -l`
-    printf "%10s %15s %15s %20s %5s %20s %20s\n" "Treatment" "Sessions#" "SLAccess#" "SlideshowRendered#" "%" "DirectToSearch#" "WrongZeroOffersInT3"
+    printf "%10s %15s %15s %20s %5s %20s\n" "Treatment" "Sessions#" "SLAccess#" "SlideshowRendered#" "%" "DirectToSearch#"
     for treatment in "${treatments[@]}"; do
+        sl_campaign_url="GET \/credit-card-smart-landing.*${campaign_type}Campaign=true"
         number_of_unique_sessions=$(cat "$out_dir"/"$campaign_type"_session_ids-"$treatment".txt | wc -l)
-        number_of_sl_accesses=$(grep "GET \/credit-card-smart-landing.*" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
-        number_of_slideshow_renders=$(grep "GET \/credit-card-smart-landing.*200$" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
-        number_of_direct_to_search=$(grep "GET \/credit-card-smart-landing.*302$" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
-        wrong_zero_offers_in_t3=0
+        number_of_sl_accesses=$(grep "$sl_campaign_url" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
+        number_of_slideshow_renders=$(grep "$sl_campaign_url.*200$" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
+        number_of_direct_to_search=$(grep "$sl_campaign_url.*302$" "$out_dir"/"$campaign_type"_localhost_access-$treatment.txt | wc -l)
 
         if [ $treatment = "t3" ]; then
             number_of_slideshow_renders=$(grep -Eo "SL_LANDING(,INIT_SESSION2)?,CREATE_LEAD_BEFORE_SEARCH" "$out_dir"/"$campaign_type"_session_activity-t3.txt | wc -l)
             number_of_direct_to_search=$(grep -Eo "SL_LANDING(,INIT_SESSION2)?(,POST_ELIG)?,SEARCH" "$out_dir"/"$campaign_type"_session_activity-t3.txt | wc -l)
-            wrong_zero_offers_in_t3=$(grep -Eo "SL_LANDING(,INIT_SESSION2)?(,POST_ELIG)?,SEARCH,ZERO_OFFERS" "$out_dir"/"$campaign_type"_session_activity-t3.txt | wc -l)
         fi
         perc_of_renders=$((number_of_slideshow_renders*100/(number_of_slideshow_renders+number_of_direct_to_search)))
 
-        printf "%10s %15s %15s %20s %5s %20s %20s\n" $treatment $number_of_unique_sessions $number_of_sl_accesses $number_of_slideshow_renders $perc_of_renders $number_of_direct_to_search $wrong_zero_offers_in_t3
+        printf "%10s %15s %15s %20s %5s %20s\n" $treatment $number_of_unique_sessions $number_of_sl_accesses $number_of_slideshow_renders $perc_of_renders $number_of_direct_to_search
     done
 
     echo "Number of times SEARCH has been called from SL URL for AndroidWebview = " `grep "AndroidWebview.*GET \/credit-card\/search.html.*smartLanding=true.*newSlideshow=true" "$out_dir"/"$campaign_type"_localhost_access-t3.txt | awk 'BEGIN{FS="\t"}{print $6}' | wc -l`    
 }
 
 function main() {
+    local col_width=120
+
+    local start_time=$(($(date +%s%N)/1000000))
+    printf "\e[8;50;${col_width}t"
     clear
     initialize
     for campaign_type in "sms" "email"; do
-        printf "\n%s\n" $(head -c 100 < /dev/zero | tr '\0' '#')
-        center_print "Analysis of $campaign_type Sessions" 
-        printf "%s\n" $(head -c 100 < /dev/zero | tr '\0' '#')
+        print_title "ANALYSING LOGS FOR '$campaign_type' SESSIONS"
         parse_session_ids_which_got_CC_SL "$campaign_type"
         categorize_sessions_based_on_treatments "$campaign_type"
         compute_session_activity "$campaign_type"
         analyze_requests_wo_ajaxcontent "$campaign_type"
         print_summary "$campaign_type"
     done
+    local end_time=$(($(date +%s%N)/1000000))
+    printf "\nTotal Time Taken = %dms\n" $((end_time-start_time))
 }
 
-start_time=$(($(date +%s%N)/1000000))
 main
-end_time=$(($(date +%s%N)/1000000))
-printf "\nTotal Time Taken = %dms\n" $((end_time-start_time))
