@@ -18,7 +18,7 @@ declare -a files_to_be_parsed=("LoanDukaan.log" "localhost_access.log" "clickstr
 declare -a treatments=("t1" "t2" "t3");
 
 declare blacklisted_ua="Mozilla\/5.0 \(X11; Ubuntu; Linux i686; rv:24.0\) Gecko\/20100101 Firefox\/24.0|okhttp\/[.0-9]*"
-declare ignore_url_patterns='GET /personal-loan|POST /personal-loan|GET /car-loan|POST /car-loan|GET /used-car-loan|POST /used-car-loan|GET /home-loan|POST /home-loan|GET /debit-card|POST /debit-card|GET /savings-account|POST /savings-account|POST /saveLead.html|GET /credit-score|GET /.*credit-report|GET /no-credit-report.html|GET /creditReportFromToken.html|POST /credit_tracker|GET /ct-.*|POST /ct-.*|POST /.*credit-report.*|GET /credit-report-status.html|GET /websocket/creditTracker|GET / HTTP/1.1|GET /struts/domTT.js|GET /saveGeoLocation.html|GET /myaccount.html|GET /verifyWorkEmail.html|GET /gzip_|POST /sendCode.html|POST /verifyCode.html|GET /.*getHeaderAjax.html|GET /getAppsFlyerLinkParams.html|GET .*/queried-options.html|GET .*/autoComplete.html|POST .*/recommend.html|GET /recommended-options.html|GET /myaccount_ajax.html|POST /ajax-login-status.html|GET /getNativeLoginWidget.html|POST /signin_iframe.html|GET /privacy-policy.html|POST /signup_iframe.html|POST /short_signup_iframe_json.html|GET /getLatestMobileNumber.html|POST /forgotpwd_iframe.html|GET /recent-searches.html|GET /help-centre.html|POST /credit-card/create_app_event_for_geolocator.html|POST /credit-card/sendCode.html|GET /credit-card/mobilePixel.html|POST /credit-card/verifyCode.html|GET /checkMatch.html|POST /credit-card/sendPANNotification.html|GET /credit-card/congratulations.html|GET /setEventDetails.html|GET /signin_social.html|GET /.*/preLoadImages.html|GET /credit-card/get-dynamic-offers.html|GET /credit-card/subscribeToNewsLetterMC.html|GET /credit-card/verifyOwnershipForm.html|GET /credit-card/.*-credit-card.html|GET /credit-card/load-elig-slides.html|POST /credit-card/offer-details-compare.html|POST /credit-card/document_types.html|POST /credit-card/clear_and_load_next_form.html|POST /credit-card/load_next_form_app.html|POST /credit-card/file_upload.html|GET /credit-card/credit-card/fetchShortlistedOffers.html|POST /credit-card/getCityState.html|GET /credit-card/application_view.html|POST /credit-card/verifyOwnership.html|GET /credit-card/application_scrape.html|POST /credit-card/remove_file.html|POST /credit-card/triggerAutoSubmit.html|POST /credit-card/checkApprovalStatus.html|POST /credit-card/application_dpCheck.html|POST /credit-card/load-prefill-data.html|POST /credit-card/ajax-offer-details-mobile.html'
+declare ignore_url_patterns='GET /personal-loan|POST /personal-loan|GET /car-loan|POST /car-loan|GET /used-car-loan|POST /used-car-loan|GET /home-loan|POST /home-loan|GET /debit-card|POST /debit-card|GET /savings-account|POST /savings-account|POST /saveLead.html|GET /credit-score|GET /.*credit-report|GET /no-credit-report.html|GET /creditReportFromToken.html|POST /credit_tracker|GET /ct-.*|POST /ct-.*|POST /.*credit-report.*|GET /credit-report-status.html|GET /websocket/creditTracker|GET / HTTP/1.1|GET /struts/domTT.js|GET /saveGeoLocation.html|GET /myaccount.html|GET /verifyWorkEmail.html|GET /gzip_|POST /sendCode.html|POST /verifyCode.html|GET /.*getHeaderAjax.html|GET /getAppsFlyerLinkParams.html|GET .*/queried-options.html|GET .*/autoComplete.html|POST .*/recommend.html|GET /recommended-options.html|GET /myaccount_ajax.html|POST /ajax-login-status.html|GET /getNativeLoginWidget.html|POST /signin_iframe.html|GET /privacy-policy.html|POST /signup_iframe.html|POST /short_signup_iframe_json.html|GET /getLatestMobileNumber.html|POST /forgotpwd_iframe.html|GET /recent-searches.html|GET /help-centre.html|POST /credit-card/create_app_event_for_geolocator.html|POST /credit-card/sendCode.html|GET /credit-card/mobilePixel.html|POST /credit-card/verifyCode.html|GET /checkMatch.html|POST /credit-card/sendPANNotification.html|GET /credit-card/congratulations.html|GET /setEventDetails.html|GET /signin_social.html|GET /.*/preLoadImages.html|GET /credit-card/get-dynamic-offers.html|GET /credit-card/subscribeToNewsLetterMC.html|GET /credit-card/verifyOwnershipForm.html|GET /credit-card/.*-credit-card.html|GET /credit-card/load-elig-slides.html|POST /credit-card/offer-details-compare.html|POST /credit-card/document_types.html|POST /credit-card/clear_and_load_next_form.html|POST /credit-card/load_next_form_app.html|POST /credit-card/file_upload.html|GET /credit-card/credit-card/fetchShortlistedOffers.html|POST /credit-card/getCityState.html|GET /credit-card/application_view.html|POST /credit-card/verifyOwnership.html|GET /credit-card/application_scrape.html|POST /credit-card/remove_file.html|POST /credit-card/triggerAutoSubmit.html|POST /credit-card/checkApprovalStatus.html|POST /credit-card/application_dpCheck.html|POST /credit-card/load-prefill-data.html|POST /credit-card/ajax-offer-details-mobile.html|GET /select.html|POST /sendOTP.html|GET /view-deals.html|POST /mutual-fund/application_save.html|POST /sendOTP.html|POST /saveCustomerProfile_ajax.html|GET /loan.html|GET /mutual-fund-smart-landing.html|POST /mutual-fund/load-prefill-data.html|GET /mutual-fund/search.html|POST /review-vote.html|GET /credit-card/get-user-reviews.html|GET /verifyctownership.html|POST /credit-card/update_eligibility.html|GET /credit-card/verifyWorkEmail.html|POST /credit-card/credit-card/sendCode.html|POST /credit-card/credit-card/application_save.html|POST /credit-card/lead_submitLead.html|GET /credit-card/getOffersById.html|GET /hdfc-bank-credit-card-customer-care-number.html|GET /confirmVerificationCode.html|GET /bind-or-redirect-customer.html|POST /fixed-deposit/load-prefill-data.html|POST /credit-card/saveAppAndNotifyCustomer.html|GET /verifyOwnershipForm.html|POST /credit-card/change_applicant_data.html|GET /credit-card/checkMatch.html|GET /Personal-Loan/getOffersById.html|GET /credit-card/showRateAlertSubscriptionOffers.html|GET /credit-card/credit-card/application_scrape.html|GET /credit-card/showRateAlertSubscriptionOffers.html|GET /credit-card/verification.html|POST /education-loan/lead_AddRequestCallbackBank.html|GET /education-loan/mobilePixel.html|GET /customer-review.html|GET /mutual-fund/mobile-dashboard.html'
 declare replace_url_patterns='
 s/"GET \/credit-card.html.*"/LP/g; 
 s/"GET \/credit-card-smart-landing.html.*"/SL_LANDING/g; 
@@ -44,6 +44,7 @@ s/"GET \/credit-card\/dpReRunOffers.html.*"/DP_CHECK/g;
 s/"POST \/credit-card\/create-lead-before-search.html.*"/CREATE_LEAD_BEFORE_SEARCH/g; 
 s/"POST \/ajax-content.html.*"/INIT_SESSION/g; 
 s/"POST \/.*\/ajax-content.html.*"/INIT_SESSION2/g; 
+s/"GET \/credit-card\/show-exit-blocker.*/SHOW_EXIT_BLOCKER/g;
 '
 
 declare user_agent_family_awk_fn='function compute_ua_family(user_agent) {
@@ -323,22 +324,11 @@ function analyze_requests_wo_ajaxcontent() {
     fi
     echo $op_name
 
-    grep -P "okhttp" "$out_dir"/"$campaign_type"_session_activity-t*.txt \
-        | awk '{print $2}' \
-        | grep -f - "$out_dir"/"$campaign_type"_localhost_access-t*.txt \
-        | grep -v okhttp \
-        | awk 'BEGIN {FS="\t"}{print $4}' \
-        | sed -r 's/.*\(.*Android [.0-9]*; //g; s/\).*//g; s/en-[a-zA-Z]{2}; //g; s/; wv//g' \
-        | sort | uniq \
-        > "$out_dir"/"$campaign_type"_ua_analysis_emitting_devices.txt
-    echo "    Devices which requested with UserAgent okhttp has been written to " "$out_dir"/"$campaign_type"_ua_analysis_emitting_devices.txt
-
     grep "SL_LANDING,$" "$out_dir"/"$campaign_type"_session_activity-*.txt \
-        | grep -v okhttp \
         | awk 'BEGIN{OFS=FS="\t"}{print $3,$4}' \
         | sort  | uniq \
         > "$out_dir"/"$campaign_type"_ua_analysis_proper_wo_ajax_content.txt
-    echo "    Proper UserAgents (not okhttp) for which we didnt see ajax-content call are exported to " "$out_dir"/"$campaign_type"_ua_analysis_proper_wo_ajax_content.html
+    echo "    UserAgents for which we didnt see ajax-content call are exported to " "$out_dir"/"$campaign_type"_ua_analysis_proper_wo_ajax_content.html
 }
 
 function print_summary() {
@@ -361,7 +351,12 @@ function print_summary() {
         printf "%10s %15s %15s %20s %5s %20s\n" $treatment $number_of_unique_sessions $number_of_sl_accesses $number_of_slideshow_renders $perc_of_renders $number_of_direct_to_search
     done
 
-    echo "Number of times SEARCH has been called from SL URL for AndroidWebview = " `grep "AndroidWebview.*GET \/credit-card\/search.html.*smartLanding=true.*newSlideshow=true" "$out_dir"/"$campaign_type"_localhost_access-t3.txt | awk 'BEGIN{FS="\t"}{print $6}' | wc -l`    
+    for treatment in "${treatments[@]}"; do
+        printf "Top User Agents (>10) for Treatment $treatment: "
+        awk 'BEGIN{FS="\t"}{print $3}' "$out_dir"/"$campaign_type"_session_activity-"$treatment".txt  | sort | uniq -c | sort  -k1,1rn | awk '{if (int($1) > 10) print $2 "("$1")"}' | cut -d, -f2- | paste -sd,
+    done
+
+    echo "Number of times SEARCH has been called in 't3' from SL URL for AndroidWebview = " `grep "AndroidWebview.*GET \/credit-card\/search.html.*smartLanding=true.*newSlideshow=true" "$out_dir"/"$campaign_type"_localhost_access-t3.txt | awk 'BEGIN{FS="\t"}{print $6}' | wc -l`    
 }
 
 function main() {
